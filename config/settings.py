@@ -20,7 +20,7 @@ class AliConfig:
     merchant_private_key_path = os.path.join(BASE_DIR, "keys", "app_private_2048.txt")
 
     # 支付宝公钥路径
-    alipay_public_key_path = os.path.join(BASE_DIR, "keys", "alipay_public_2048.txt")
+    ali_public_key_path = os.path.join(BASE_DIR, "keys", "ali_public_2048.txt")
 
     # 服务器异步通知页面路径 需http: // 格式的完整路径，不能加?id = 123 这类自定义参数，必须外网可以正常访问
     # 发post请求

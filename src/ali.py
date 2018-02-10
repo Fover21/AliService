@@ -26,13 +26,17 @@ class AliBase(object):
     """
     接入阿里第三方服务的一些公共方法及属性的使用
     """
+    app_id = settings.AliConfig.app_id
 
-    def __init__(self, app_id, app_private_key_path, alipay_public_key_path, debug=False):
-        self.app_id = app_id
-        self.app_private_key_path = app_private_key_path
-        self.alipay_public_key_path = alipay_public_key_path
+    app_private_key_path = settings.AliConfig.merchant_private_key_path
+
+    ali_public_key_path = settings.AliConfig.ali_public_key_path
+
+    debug = settings.AliConfig.debug
+
+    def __init__(self):
         self.app_private_key = None
-        self.alipay_public_key = None
+        self.ali_public_key = None
         self.return_url = None
         self.app_notify_url = None
 
@@ -41,18 +45,37 @@ class AliBase(object):
             self.app_private_key = RSA.importKey(fp.read())
 
         # 加载支付宝公钥
-        with open(self.alipay_public_key_path) as fp:
-            self.alipay_public_key = RSA.importKey(fp.read())
+        with open(self.ali_public_key_path) as fp:
+            self.ali_public_key = RSA.importKey(fp.read())
 
-        if debug is True:
+        if self.debug is True:
             self._gateway = "https://openapi.alipaydev.com/gateway.do"
         else:
             self._gateway = "https://openapi.alipay.com/gateway.do"
 
-    def build_body(self, method, biz_content, return_url=None):
+    def build_body(self, api, biz_content, return_url=None):
+        """构建请求体.
+
+            公有请求体 + 业务请求体
+
+        Parameters
+        ----------
+        api : string
+            请求API
+
+        biz_content: dict
+            业务参数
+
+        return_url: string
+            实名认证成功回调url
+
+        Returns
+        -------
+        请求参数: dict
+        """
         data = {
             "app_id": self.app_id,
-            "method": method,
+            "method": api,
             "charset": "utf-8",
             "sign_type": "RSA2",
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -71,21 +94,21 @@ class AliBase(object):
 
         return data
 
-    def generate_url(self, data):
+    def generate_url(self, query_string):
         """生成请求url.
 
             URL = 支付宝网关 + 请求数据
 
         Parameters
         ----------
-        data : string
+        query_string : string
             请求数据
 
         Returns
         -------
         请求url(get请求)
         """
-        return self._gateway + "?" + data
+        return "{url}?{query_string}".format(url=self._gateway, query_string=query_string)
 
     def sign(self, unsigned_string):
         # 开始计算签名
@@ -111,27 +134,43 @@ class AliBase(object):
         return signed_string
 
     def verify(self, data, signature):
-        """
-        验证
-        :param data: 数据
-        :param signature: 签名值
-        :return:
+        """验证签名
+
+        Parameters
+        ----------
+        data : dict
+            加密数据
+
+        signature : string
+            签名值
+
+        Returns
+        -------
+        bool
         """
         if "sign_type" in data:
-            sign_type = data.pop("sign_type")
+            data.pop("sign_type")
         # 排序后的字符串
         ordered_items = self.ordered_data(data)
         message = "&".join(u"{}={}".format(k, v) for k, v in ordered_items)
         return self._verify(message, signature)
 
     def _verify(self, raw_content, signature):
+        """使用支付宝的公钥去加密原始数据，然后和签名值比较
+
+        Parameters
+        ----------
+        raw_content : string
+            原始数据
+
+        signature : string
+            签名值
+
+        Returns
+        -------
+        bool
         """
-        使用支付宝的公钥去加密原始数据，然后和签名值比较
-        :param raw_content: 原始数据
-        :param signature: 签名值
-        :return:
-        """
-        key = self.alipay_public_key
+        key = self.ali_public_key
         signer = PKCS1_v1_5.new(key)
         digest = SHA256.new()
         digest.update(raw_content.encode("utf8"))
@@ -155,8 +194,8 @@ class AliCertification(AliBase):
 
     """
 
-    def __init__(self, app_id, app_private_key_path, alipay_public_key_path, debug=False):
-        super(AliCertification, self).__init__(app_id, app_private_key_path, alipay_public_key_path, debug)
+    def __init__(self):
+        super(AliCertification, self).__init__()
 
     def authentication_initialize(self, transaction_id, identity_param, product_code=None, biz_code=None, **kwargs):
         """认证初始化.
@@ -252,8 +291,8 @@ class AliTransfer(AliBase):
     支付宝转账及转账查询接口
     """
 
-    def __init__(self, app_id, app_private_key_path, alipay_public_key_path, debug=False):
-        super(AliTransfer, self).__init__(app_id, app_private_key_path, alipay_public_key_path, debug)
+    def __init__(self):
+        super(AliTransfer, self).__init__()
 
     def transfer_pay(self, out_biz_no, payee_account, amount, **kwargs):
         """转账接口.
@@ -325,8 +364,8 @@ class AliPay(AliBase):
     支付宝支付接口
     """
 
-    def __init__(self, app_id, app_private_key_path, alipay_public_key_path, app_notify_url=None, return_url=None, debug=False):
-        super(AliPay, self).__init__(app_id, app_private_key_path, alipay_public_key_path, debug)
+    def __init__(self, app_notify_url=None, return_url=None):
+        super(AliPay, self).__init__()
         self.app_notify_url = app_notify_url
         self.return_url = return_url
 
@@ -381,29 +420,12 @@ class AliPay(AliBase):
         data = self.build_body("alipay.trade.page.pay", biz_content)
         return self.sign_data(data)
 
-# 支付接口
-ali_pay = AliPay(
-    app_id=settings.AliConfig.app_id,
-    app_private_key_path=settings.AliConfig.merchant_private_key_path,
-    alipay_public_key_path=settings.AliConfig.alipay_public_key_path,
-    app_notify_url=settings.AliConfig.pay_notify_url,
-    return_url=settings.AliConfig.pay_return_url,
-    debug=settings.AliConfig.debug
-)
 
-# 实名认证接口
-ali_certification = AliCertification(
-    app_id=settings.AliConfig.app_id,
-    app_private_key_path=settings.AliConfig.merchant_private_key_path,
-    alipay_public_key_path=settings.AliConfig.alipay_public_key_path,
-    debug=settings.AliConfig.debug
-)
+# PC支付API
+ali_pay = AliPay(app_notify_url=settings.AliConfig.pay_notify_url, return_url=settings.AliConfig.pay_return_url)
 
+# 实名认证API
+ali_certification = AliCertification()
 
-# 转账接口
-ali_transfer = AliTransfer(
-    app_id=settings.AliConfig.app_id,
-    app_private_key_path=settings.AliConfig.merchant_private_key_path,
-    alipay_public_key_path=settings.AliConfig.alipay_public_key_path,
-    debug=settings.AliConfig.debug
-)
+# 转账API
+ali_transfer = AliTransfer()

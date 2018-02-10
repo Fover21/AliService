@@ -1,7 +1,8 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-
+    此项目使用商户ID, 公私钥均为沙箱测试环境, 切勿商用
+    如有疑问 +QQ: 404042726
 
 """
 
@@ -32,7 +33,7 @@ if __name__ == '__main__':
     # TODO: 生成支付的url
     pay_data = ali_pay.direct_pay(
         subject="luffycity",
-        out_trade_no="2017021231231213134",
+        out_trade_no="20170212312312131355",
         total_amount=1,
         passback_params=str({'source': 'shop_cart', 'products': [1, 2, 3, 4]})
     )
