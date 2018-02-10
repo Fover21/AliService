@@ -11,11 +11,11 @@ from urllib.parse import urlparse, parse_qs
 from src.ali import (
     ali_pay,
     ali_certification,
-    ali_transfer
+    ali_transfer,
+    ali_wap_pay,
 )
 
 import requests
-
 
 if __name__ == '__main__':
     # TODO: 签名校验(所有接口的回调签名校验均为如此)
@@ -113,3 +113,9 @@ if __name__ == '__main__':
     cert_query_data = ali_certification.query("ZM201612013000000393900404029253")
     cert_query_url = ali_certification.generate_url(cert_query_data)
     # 请求并获取查询结果
+    # ...
+
+    # -----------------------------------------------------------------------------
+    # TODO: 移动端浏览器支付API, 会主动唤起支付宝APP进行支付, 支付成功可通过文档中的回传参数进行业务处理
+    query_string = ali_wap_pay.direct_pay("luffycity", "123123123121123", "1")
+    print(ali_wap_pay.generate_url(query_string))

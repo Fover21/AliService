@@ -359,13 +359,13 @@ class AliTransfer(AliBase):
         return self.sign_data(data)
 
 
-class AliPay(AliBase):
+class AliPcPay(AliBase):
     """
     支付宝支付接口
     """
 
     def __init__(self, app_notify_url=None, return_url=None):
-        super(AliPay, self).__init__()
+        super(AliPcPay, self).__init__()
         self.app_notify_url = app_notify_url
         self.return_url = return_url
 
@@ -421,8 +421,72 @@ class AliPay(AliBase):
         return self.sign_data(data)
 
 
-# PC支付API
-ali_pay = AliPay(app_notify_url=settings.AliConfig.pay_notify_url, return_url=settings.AliConfig.pay_return_url)
+class AliWapPay(AliBase):
+    """
+    支付宝移动端网站支付
+    """
+
+    def __init__(self, app_notify_url=None, return_url=None):
+        super(AliWapPay, self).__init__()
+        self.app_notify_url = app_notify_url
+        self.return_url = return_url
+
+    def direct_pay(self, subject, out_trade_no, total_amount, **kwargs):
+        """移动浏览器支付接口. 文档DOC地址: https://docs.open.alipay.com/203/107090/
+
+        Parameters
+        ----------
+        subject : string
+            商品的标题/交易标题/订单标题/订单关键字等
+
+        out_trade_no : string
+            商户网站唯一订单号
+
+        total_amount : string or float or int
+            订单总金额，单位为元，精确到小数点后两位，取值范围[0.01,100000000]
+
+        kwargs : dict
+            以下均为可选参数
+
+            body : string
+                订单描述
+
+            goods_detail : json
+                订单包含的商品列表信息，Json格式： {&quot;show_url&quot;:&quot;https://或http://打头的商品的展示地址&quot;}
+                在支付时，可点击商品名称跳转到该地址
+
+            passback_params : string
+                公用回传参数，如果请求时传递了该参数，则返回给商户时会回传该参数。
+                支付宝只会在异步通知时将该参数原样返回。
+                本参数必须进行UrlEncode之后才可以发送给支付宝
+
+            goods_type : int
+                商品主类型：0; 虚拟类商品，1; 实物类商品（默认）
+
+            extend_params :
+                业务扩张参数(主要用于接入花呗分期)
+
+        Returns
+        -------
+        获取PC支付接口的请求数据
+        """
+        biz_content = {
+            "subject": subject,
+            "out_trade_no": out_trade_no,
+            "total_amount": total_amount,
+            "product_code": "QUICK_WAP_WAY",  # 销售产品码，目前仅支持这个类型
+            # "qr_pay_mode":4
+        }
+
+        biz_content.update(**kwargs)
+        data = self.build_body("alipay.trade.wap.pay", biz_content)
+        return self.sign_data(data)
+
+# PC网站支付API
+ali_pay = AliPcPay(app_notify_url=settings.AliConfig.pay_notify_url, return_url=settings.AliConfig.pay_return_url)
+
+# 移动网站支付API
+ali_wap_pay = AliWapPay(app_notify_url=settings.AliConfig.pay_notify_url, return_url=settings.AliConfig.pay_return_url)
 
 # 实名认证API
 ali_certification = AliCertification()
